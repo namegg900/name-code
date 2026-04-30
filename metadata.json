@@ -1,0 +1,16 @@
+{
+  "name": "Name-Code",
+  "description": "A high-performance AI coding assistant combining Claude's minimalist UI with Google AI Studio's powerful split-screen code execution and preview features.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "AI Code Generation",
+    "Split-screen Preview",
+    "Project Scaffolding",
+    "Security Auditing",
+    "Interactive UI Prototyping"
+  ]
+}

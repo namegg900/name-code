@@ -1,0 +1,32 @@
+export const AI_MODELS = [
+  { id: 'ai-mc', name: 'AI-MC (Minecraft)', description: 'Master of Mods/Addons/Datapacks' },
+  { id: 'ai-fix', name: 'AI-Fix (Debugger)', description: 'Elite bug identification' },
+  { id: 'ai-refactor', name: 'AI-Refactor', description: 'Clean and optimize logic' },
+  { id: 'ai-security', name: 'AI-Security', description: 'Deep security auditing' },
+  { id: 'ai-ui', name: 'AI-UI/UX', description: 'Frontend design maestro' },
+  { id: 'ai-db', name: 'AI-Database', description: 'Schema and query expert' },
+  { id: 'ai-scaffold', name: 'AI-Scaffold', description: 'Rapid project bootstrap' },
+];
+
+export const EXTRA_FEATURES = [
+  "DeepSearch v2",
+  "Think-Step Reasoning",
+  "Image-to-Code Gen",
+  "URL Content Reader",
+  "Multi-Model Switching",
+  "Voice Commands",
+  "Export to GitHub",
+  "Cloud Preview",
+  "Collaborative Editing",
+  "Token Counter",
+  "System Prompt Library",
+  "Regex Lab",
+  "Data Visualization",
+  "SQL Playground",
+  "Diff Viewer",
+  "Commit Message Genie",
+  "Dependency Checker",
+  "Docker Config Gen",
+  "CI/CD Pipeline Builder",
+  "SEO Optimizer",
+];
