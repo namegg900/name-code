@@ -21,18 +21,58 @@ export async function chatWithClaude(prompt: string, history: { role: string, co
       userText = `[ATTACHED IMAGES: ${images.length}]\n\n${prompt}`;
     }
 
-    // Primary: Vercel rewrite proxy endpoint (same-origin)
+    // Primary: DeepSeek endpoint
     try {
-      const proxyUrl = `/api/openai?question=${encodeURIComponent(userText)}&system=${encodeURIComponent(SYSTEM_PROMPT)}`;
-      const response = await axios.get(proxyUrl, { timeout: 70000 });
+      const response = await axios.get(
+        "https://api.covenant.sbs/api/ai/deepseek",
+        {
+          params: {
+            question: userText,
+            system: SYSTEM_PROMPT
+          },
+          headers: {
+            "x-api-key": "cov_live_54d5852a27b215169f91efefed500ffd187d20a3c1ed752c"
+          },
+          timeout: 70000
+        }
+      );
       const result = response.data?.result || response.data?.message || response.data?.data || response.data;
       if (typeof result === "string" && result.trim().length > 0) return result;
-      if (typeof result?.result === "string" && result.result.trim().length > 0) return result.result;
       if (result) return JSON.stringify(result);
-    } catch (proxyError) {
-      console.warn("OpenAI proxy failed", proxyError);
+    } catch (deepseekError) {
+      console.warn("DeepSeek endpoint failed, falling back to Gemini Core...", deepseekError);
     }
-    return "ERROR: AI proxy failed. Please check Vercel rewrite /api/openai.";
+
+    // Fallback to Gemini with native Vision support
+    if (genAI) {
+      const historyContext = history.slice(-5).map(m => `[${m.role.toUpperCase()}]: ${m.content.slice(0, 500)}`).join('\n');
+      const promptContext = `${SYSTEM_PROMPT}\n\n[HISTORY]\n${historyContext}\n\n[USER]: ${prompt}`;
+
+      const chatParts: any[] = [{ text: promptContext }];
+      
+      if (images && images.length > 0) {
+        images.forEach(img => {
+          const match = img.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (match) {
+            chatParts.push({
+              inlineData: {
+                data: match[2],
+                mimeType: match[1]
+              }
+            });
+          }
+        });
+      }
+      
+      const response = await genAI.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: { parts: chatParts }
+      });
+      
+      return response.text;
+    }
+
+    return "ERROR: DeepSeek endpoint failed and no Gemini API Key found.";
   } catch (error: any) {
     console.error("Name-AI Critical Failure:", error);
     return `CRITICAL SYSTEM ERROR [NAME-AI]: ${error.message}`;
