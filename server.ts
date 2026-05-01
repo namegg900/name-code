@@ -8,6 +8,7 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({ limit: '50mb' }));
+  app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
   // List of Gemini API Keys for rotation
   const GEMINI_KEYS = [
@@ -44,7 +45,7 @@ async function startServer() {
       const apiKey = GEMINI_KEYS[currentKeyIndex];
       try {
         const response = await axios.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
           {
             system_instruction: {
               parts: [{ text: systemPrompt }]
@@ -83,6 +84,38 @@ async function startServer() {
     try {
       const { text, history, prompt: systemPrompt } = req.body;
       const nameAISystemPrompt = systemPrompt || "Kamu adalah Name-AI, AI yang ramah, hangat, dan menyenangkan saat diajak berbicara.";
+      const COVENANT_KEY = "cov_live_54d5852a27b215169f91efefed500ffd187d20a3c1ed752c";
+      const codingHint = /\b(code|coding|program|script|function|class|bug|debug|build|buat coding|bikin coding)\b/i.test(text || "");
+
+      // Primary: Covenant API (DeepSeek + CodeGen)
+      try {
+        if (codingHint) {
+          const codegenResponse = await axios.get("https://api.covenant.sbs/api/ai/codegen", {
+            params: {
+              prompt: text,
+              lang: "javascript"
+            },
+            headers: { "x-api-key": COVENANT_KEY },
+            timeout: 45000
+          });
+          const codegenResult = codegenResponse.data?.data?.result || codegenResponse.data?.result || codegenResponse.data?.message;
+          if (codegenResult) {
+            return res.json({ result: String(codegenResult) });
+          }
+        }
+
+        const deepseekResponse = await axios.get("https://api.covenant.sbs/api/ai/deepseek", {
+          params: { question: text, system: nameAISystemPrompt },
+          headers: { "x-api-key": COVENANT_KEY },
+          timeout: 45000
+        });
+        const deepseekResult = deepseekResponse.data?.data?.result || deepseekResponse.data?.result || deepseekResponse.data?.message;
+        if (deepseekResult) {
+          return res.json({ result: String(deepseekResult) });
+        }
+      } catch (covenantError: any) {
+        console.warn("Covenant endpoint failed, trying Gemini/fallbacks...", covenantError.message);
+      }
       
       // Primary: Rotating Gemini Keys
       try {
