@@ -34,6 +34,16 @@ export default function Sidebar({
   onOpenSettings 
 }: SidebarProps) {
   const isDark = theme === 'dark';
+  const formatDateLabel = (timestamp: number) => {
+    const d = new Date(timestamp);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (sameDay) return 'Hari ini';
+    if (d.toDateString() === yesterday.toDateString()) return 'Kemarin';
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   return (
     <div className={`w-72 h-screen border-r flex flex-col font-sans select-none overflow-hidden shrink-0 transition-colors duration-300 ${
@@ -90,6 +100,7 @@ export default function Sidebar({
                   <span className="font-medium truncate underline-offset-4 decoration-[#D97757]/30 group-hover:underline">
                     {session.title || 'Untitled Project'}
                   </span>
+                  <span className={`text-[9px] ${isDark ? 'text-[#666]' : 'text-[#999]'}`}>{formatDateLabel(session.updatedAt)}</span>
                 </div>
                 <button 
                   onClick={(e) => {
