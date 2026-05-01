@@ -245,19 +245,23 @@ export default function App() {
 
   return (
     <div className={`flex h-screen w-screen overflow-hidden transition-colors duration-300 ${isDark ? 'bg-[#121212] text-white' : 'bg-white text-[#1a1a1a]'}`}>
-      {/* Sidebar Overlay */}
-      <div className={`fixed inset-0 z-50 lg:relative lg:inset-auto ${isSidebarOpen ? 'block' : 'hidden lg:block'} lg:pointer-events-auto ${isSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none lg:pointer-events-auto'}`}>
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setIsSidebarOpen(false)} />
-        <Sidebar 
-          userName={profile.name} 
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+      )}
+
+      {/* Sidebar */}
+      <div className={`fixed left-0 top-0 z-50 h-screen transition-transform duration-200 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <Sidebar
+          userName={profile.name}
           theme={profile.settings.theme}
           sessions={profile.sessions}
           currentSessionId={profile.currentSessionId}
           credits={profile.credits}
-          onNewChat={() => { handleNewChat(); setIsSidebarOpen(false); }} 
+          onNewChat={() => { handleNewChat(); setIsSidebarOpen(false); }}
           onSelectSession={(id) => { handleSelectSession(id); setIsSidebarOpen(false); }}
           onDeleteSession={handleDeleteSession}
-          onFeatureSelect={(name) => { handleSendMessage(`Module: ${name}`); setIsSidebarOpen(false); }} 
+          onFeatureSelect={(name) => { handleSendMessage(`Module: ${name}`); setIsSidebarOpen(false); }}
           onToggleTheme={() => handleUpdateSettings({ theme: isDark ? 'light' : 'dark' })}
           onOpenSettings={() => alert('NC-PRO v4.2 • Core Online')}
         />
