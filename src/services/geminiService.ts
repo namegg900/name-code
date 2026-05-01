@@ -25,24 +25,26 @@ export async function chatWithClaude(prompt: string, history: { role: string, co
       userText = `[ATTACHED IMAGES: ${images.length}]\n\n${prompt}`;
     }
 
-    // Primary: Vercel rewrite proxy endpoint (avoids browser CORS issues)
+    // Primary: DeepSeek endpoint
     try {
-      const isCodingRequest = /\b(code|coding|program|script|function|class|bug|debug|build|buat coding|bikin coding)\b/i.test(userText);
-      const proxyUrl = isCodingRequest
-        ? `/api-proxy/api/ai/codegen?prompt=${encodeURIComponent(userText)}&lang=javascript`
-        : `/api-proxy/api/ai/deepseek?question=${encodeURIComponent(userText)}&system=${encodeURIComponent(SYSTEM_PROMPT)}`;
-      const response = await axios.get(proxyUrl, {
-        headers: {
-          "x-api-key": "cov_live_54d5852a27b215169f91efefed500ffd187d20a3c1ed752c"
-        },
-        timeout: 70000
-      });
+      const response = await axios.get(
+        "https://api.covenant.sbs/api/ai/deepseek",
+        {
+          params: {
+            question: userText,
+            system: SYSTEM_PROMPT
+          },
+          headers: {
+            "x-api-key": "cov_live_54d5852a27b215169f91efefed500ffd187d20a3c1ed752c"
+          },
+          timeout: 70000
+        }
+      );
       const result = response.data?.result || response.data?.message || response.data?.data || response.data;
       if (typeof result === "string" && result.trim().length > 0) return result;
-      if (typeof result?.result === "string" && result.result.trim().length > 0) return result.result;
       if (result) return JSON.stringify(result);
-    } catch (proxyError) {
-      console.warn("Covenant proxy failed, falling back to Gemini Core...", proxyError);
+    } catch (deepseekError) {
+      console.warn("DeepSeek endpoint failed, falling back to Gemini Core...", deepseekError);
     }
 
     // Fallback to Gemini with native Vision support
@@ -74,7 +76,7 @@ export async function chatWithClaude(prompt: string, history: { role: string, co
       return response.text;
     }
 
-    return "ERROR: Custom Name-AI Endpoint failed and no Gemini API Key found.";
+    return "ERROR: DeepSeek endpoint failed and no Gemini API Key found.";
   } catch (error: any) {
     console.error("Name-AI Critical Failure:", error);
     return `CRITICAL SYSTEM ERROR [NAME-AI]: ${error.message}`;

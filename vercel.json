@@ -1,8 +1,9 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/api-proxy/:path*",
-      "destination": "https://api.covenant.sbs/:path*"
+      "source": "/api/proxy/chat",
+      "destination": "/api/chat"
     }
   ]
 }
