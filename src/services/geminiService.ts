@@ -19,24 +19,32 @@ const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env
 
 export async function chatWithClaude(prompt: string, history: { role: string, content: string }[], images?: string[]) {
   try {
-    const historyContext = history.slice(-5).map(m => `[${m.role.toUpperCase()}]: ${m.content.slice(0, 1000)}`).join('\n');
     let userText = prompt;
     
     if (images && images.length > 0) {
       userText = `[ATTACHED IMAGES: ${images.length}]\n\n${prompt}`;
     }
 
-    // Try the custom endpoint first
+    // Primary: DeepSeek endpoint
     try {
-      const response = await axios.post(`/api/chat`, { 
-        text: userText,
-        history: history.slice(-10), // Pass real history array
-        prompt: SYSTEM_PROMPT 
-      }, { timeout: 70000 });
-      if (response.data && response.data.result) return response.data.result;
-      if (response.data && response.data.message) return response.data.message;
-    } catch (proxyError) {
-      console.warn("Name-AI Custom API failed, falling back to Gemini Core...", proxyError);
+      const response = await axios.get(
+        "https://api.covenant.sbs/api/ai/deepseek",
+        {
+          params: {
+            question: userText,
+            system: SYSTEM_PROMPT
+          },
+          headers: {
+            "x-api-key": "cov_live_54d5852a27b215169f91efefed500ffd187d20a3c1ed752c"
+          },
+          timeout: 70000
+        }
+      );
+      const result = response.data?.result || response.data?.message || response.data?.data || response.data;
+      if (typeof result === "string" && result.trim().length > 0) return result;
+      if (result) return JSON.stringify(result);
+    } catch (deepseekError) {
+      console.warn("DeepSeek endpoint failed, falling back to Gemini Core...", deepseekError);
     }
 
     // Fallback to Gemini with native Vision support
@@ -68,7 +76,7 @@ export async function chatWithClaude(prompt: string, history: { role: string, co
       return response.text;
     }
 
-    return "ERROR: Custom Name-AI Endpoint failed and no Gemini API Key found.";
+    return "ERROR: DeepSeek endpoint failed and no Gemini API Key found.";
   } catch (error: any) {
     console.error("Name-AI Critical Failure:", error);
     return `CRITICAL SYSTEM ERROR [NAME-AI]: ${error.message}`;
