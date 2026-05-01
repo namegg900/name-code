@@ -21,6 +21,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentArtifact, setCurrentArtifact] = useState<Artifact | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [pendingArtifact, setPendingArtifact] = useState<Artifact | null>(null);
 
   useEffect(() => {
     const savedProfile = localStorage.getItem('name-code-profile-v3');
@@ -37,6 +39,13 @@ export default function App() {
       }
       setProfile(p);
     }
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   const saveProfile = (p: UserProfile | ((prev: UserProfile | null) => UserProfile | null)) => {
@@ -228,7 +237,11 @@ export default function App() {
       
       const artifacts = extractArtifacts(aiResponse);
       if (artifacts.length > 0) {
-        setCurrentArtifact(artifacts[0]);
+        if (isMobile) {
+          setPendingArtifact(artifacts[0]);
+        } else {
+          setCurrentArtifact(artifacts[0]);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -283,8 +296,19 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-hidden relative">
+          {pendingArtifact && isMobile && (
+            <div className="absolute top-3 left-3 right-3 z-30 bg-[#D97757] text-white rounded-xl p-3 flex items-center justify-between gap-2">
+              <span className="text-xs font-bold">Preview siap. Buka editor sekarang?</span>
+              <button
+                onClick={() => { setCurrentArtifact(pendingArtifact); setPendingArtifact(null); }}
+                className="px-3 py-1 rounded-lg bg-white text-[#D97757] text-xs font-black"
+              >
+                LIHAT
+              </button>
+            </div>
+          )}
           <PanelGroup direction="horizontal" id="main-layout">
-            <Panel id="chat-panel" order={1} defaultSize={currentArtifact ? 50 : 100} minSize={30}>
+            <Panel id="chat-panel" order={1} defaultSize={currentArtifact && !isMobile ? 50 : 100} minSize={30}>
               <ChatInterface 
                 messages={currentSession?.messages || []} 
                 isLoading={isLoading} 
@@ -300,7 +324,7 @@ export default function App() {
             
             {currentArtifact && (
               <>
-                <PanelResizeHandle className={`w-1 transition-all md:block hidden ${isDark ? 'bg-[#2a2a2a] hover:bg-[#D97757]' : 'bg-[#E5E5E1] hover:bg-[#D97757]'}`} />
+                {!isMobile && <PanelResizeHandle className={`w-1 transition-all md:block hidden ${isDark ? 'bg-[#2a2a2a] hover:bg-[#D97757]' : 'bg-[#E5E5E1] hover:bg-[#D97757]'}`} />}
                 <Panel id="artifact-panel" order={2} minSize={30} className="fixed inset-0 z-[60] md:relative md:inset-auto">
                   <ArtifactView 
                     artifact={currentArtifact} 

@@ -11,8 +11,15 @@ export async function chatWithAI(messages: Message[]): Promise<string> {
   }));
 
   const latestText = formattedMessages[formattedMessages.length - 1]?.content || '';
+  const historyText = formattedMessages
+    .slice(0, -1)
+    .map((m) => `[${m.role.toUpperCase()}] ${m.content}`)
+    .join('\n');
+  const fullContextText = historyText
+    ? `${historyText}\n\n[USER_LATEST] ${latestText}`
+    : latestText;
   const query = new URLSearchParams({
-    text: latestText,
+    text: fullContextText,
     prompt: SYSTEM_PROMPT,
     max_tokens: '20000',
     reasoning_tokens: '20000'
