@@ -1,9 +1,8 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/api/proxy/chat",
-      "destination": "/api/chat"
+      "source": "/api/openai",
+      "destination": "https://api.deline.web.id/ai/openai"
     }
   ]
 }

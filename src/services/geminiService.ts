@@ -1,80 +1,41 @@
-import axios from 'axios';
+import { Message, AIResponse } from '../types';
 
-export const SYSTEM_PROMPT = `Name-AI PRO V4.2 [VISION-ENABLED]
-ROLE: THE SUPREME MULTI-FILE ARCHITECT.
-MISSION: Solve complex puzzles, analyze visual data, and build perfect technical solutions with professional precision.
-CORE INTELLIGENCE: Advanced Neural Logic Synthesis.
+const ENDPOINT = '/api/openai';
 
-STRATEGIC PROTOCOLS:
-1. IDENTITY: You are Name-AI, the ultimate coding companion.
-2. IMAGE RECOGNITION: Scan images for text, colors, and layout patterns with 100% accuracy BEFORE generating code.
-3. MULTI-FILE ARCHITECTURE: Always separate logic into index.html, styles.css, and script.js for multi-file projects. Use standard blocks: \`\`\`lang FILENAME: path/to/file.ext\ncode\n\`\`\`.
-4. WORKSPACE UX: Ensure the output creates a clean file explorer structure similar to VSCode.
-5. UI/UX: Design modern, ultra-responsive interfaces using Tailwind CSS.
-6. NO FAILURES: Logic must be bug-free and production-ready.`;
+export const SYSTEM_PROMPT = `You are name-code v1, an advanced AI coding assistant. You are an expert at writing code, fixing bugs, and explaining complex concepts. Your UI is inspired by Claude, Codex, and Google AI Studio. Be concise, precise, and helpful.`;
+
+export async function chatWithAI(messages: Message[]): Promise<string> {
+  const formattedMessages = messages.map((m) => ({
+    role: m.role,
+    content: m.content
+  }));
+
+  const latestText = formattedMessages[formattedMessages.length - 1]?.content || '';
+  const query = new URLSearchParams({
+    text: latestText,
+    prompt: SYSTEM_PROMPT
+  });
+  const response = await fetch(`${ENDPOINT}?${query.toString()}`, { method: 'GET' });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`AI request failed: ${response.status} ${errorText}`);
+  }
+
+  const data: AIResponse & { result?: string; message?: string } = await response.json();
+  return data?.result || data?.message || data?.choices?.[0]?.message?.content || 'No response from AI.';
+}
 
 export async function chatWithClaude(prompt: string, history: { role: string, content: string }[], images?: string[]) {
   try {
-    let userText = prompt;
-    
-    if (images && images.length > 0) {
-      userText = `[ATTACHED IMAGES: ${images.length}]\n\n${prompt}`;
-    }
+    const allMessages: Message[] = [
+      ...history.map((h, idx) => ({ id: `h-${idx}`, role: h.role as 'user' | 'assistant', content: h.content, timestamp: Date.now() - (history.length - idx) })),
+      { id: 'current', role: 'user', content: images?.length ? `[ATTACHED IMAGES: ${images.length}]\n\n${prompt}` : prompt, timestamp: Date.now() }
+    ];
 
-    // Primary: DeepSeek endpoint
-    try {
-      const response = await axios.get(
-        "https://api.covenant.sbs/api/ai/deepseek",
-        {
-          params: {
-            question: userText,
-            system: SYSTEM_PROMPT
-          },
-          headers: {
-            "x-api-key": "cov_live_54d5852a27b215169f91efefed500ffd187d20a3c1ed752c"
-          },
-          timeout: 70000
-        }
-      );
-      const result = response.data?.result || response.data?.message || response.data?.data || response.data;
-      if (typeof result === "string" && result.trim().length > 0) return result;
-      if (result) return JSON.stringify(result);
-    } catch (deepseekError) {
-      console.warn("DeepSeek endpoint failed, falling back to Gemini Core...", deepseekError);
-    }
-
-    // Fallback to Gemini with native Vision support
-    if (genAI) {
-      const historyContext = history.slice(-5).map(m => `[${m.role.toUpperCase()}]: ${m.content.slice(0, 500)}`).join('\n');
-      const promptContext = `${SYSTEM_PROMPT}\n\n[HISTORY]\n${historyContext}\n\n[USER]: ${prompt}`;
-
-      const chatParts: any[] = [{ text: promptContext }];
-      
-      if (images && images.length > 0) {
-        images.forEach(img => {
-          const match = img.match(/^data:(image\/\w+);base64,(.+)$/);
-          if (match) {
-            chatParts.push({
-              inlineData: {
-                data: match[2],
-                mimeType: match[1]
-              }
-            });
-          }
-        });
-      }
-      
-      const response = await genAI.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: { parts: chatParts }
-      });
-      
-      return response.text;
-    }
-
-    return "ERROR: DeepSeek endpoint failed and no Gemini API Key found.";
+    return await chatWithAI(allMessages);
   } catch (error: any) {
-    console.error("Name-AI Critical Failure:", error);
+    console.error('Error in chatWithAI:', error);
     return `CRITICAL SYSTEM ERROR [NAME-AI]: ${error.message}`;
   }
 }
