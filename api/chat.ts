@@ -7,8 +7,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { text, prompt: systemPrompt } = req.body || {};
     const nameAISystemPrompt = systemPrompt || 'Kamu adalah Name-AI, AI yang ramah, hangat, dan menyenangkan saat diajak berbicara.';
-    const response = await axios.get('https://api.deline.web.id/ai/openai', {
-      params: { text: text || '', prompt: nameAISystemPrompt },
+    const response = await axios.get('https://api.deline.web.id/ai/copilot', {
+      params: { text: text || '', prompt: nameAISystemPrompt, max_tokens: 20000, reasoning_tokens: 20000 },
       timeout: 70000,
       headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }
     });

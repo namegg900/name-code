@@ -1,6 +1,6 @@
 import { Message, AIResponse } from '../types';
 
-const ENDPOINT = '/api/openai';
+const ENDPOINT = '/api/copilot';
 
 export const SYSTEM_PROMPT = `You are name-code v1, an advanced AI coding assistant. You are an expert at writing code, fixing bugs, and explaining complex concepts. Your UI is inspired by Claude, Codex, and Google AI Studio. Be concise, precise, and helpful.`;
 
@@ -13,7 +13,9 @@ export async function chatWithAI(messages: Message[]): Promise<string> {
   const latestText = formattedMessages[formattedMessages.length - 1]?.content || '';
   const query = new URLSearchParams({
     text: latestText,
-    prompt: SYSTEM_PROMPT
+    prompt: SYSTEM_PROMPT,
+    max_tokens: '20000',
+    reasoning_tokens: '20000'
   });
   const response = await fetch(`${ENDPOINT}?${query.toString()}`, { method: 'GET' });
 

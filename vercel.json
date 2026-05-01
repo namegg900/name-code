@@ -3,6 +3,10 @@
     {
       "source": "/api/openai",
       "destination": "https://api.deline.web.id/ai/openai"
+    },
+    {
+      "source": "/api/copilot",
+      "destination": "https://api.deline.web.id/ai/copilot"
     }
   ]
 }
