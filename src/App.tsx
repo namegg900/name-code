@@ -21,6 +21,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentArtifact, setCurrentArtifact] = useState<Artifact | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [pendingArtifact, setPendingArtifact] = useState<Artifact | null>(null);
 
   useEffect(() => {
     const savedProfile = localStorage.getItem('name-code-profile-v3');
@@ -37,6 +39,13 @@ export default function App() {
       }
       setProfile(p);
     }
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   const saveProfile = (p: UserProfile | ((prev: UserProfile | null) => UserProfile | null)) => {
@@ -113,6 +122,7 @@ export default function App() {
     let match;
     
     const projectFiles: FileEntry[] = [];
+    let fallbackIndex = 1;
 
     while ((match = regex.exec(content)) !== null) {
       const language = (match[1] || 'text').toLowerCase();
@@ -125,9 +135,8 @@ export default function App() {
       const isWeb = ['html', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'react'].includes(language) || 
                     (filename && (filename.endsWith('.html') || filename.endsWith('.css') || filename.endsWith('.js')));
 
-      if (filename) {
-        projectFiles.push({ name: filename, language, content: code });
-      }
+      const generatedName = filename || `snippet-${fallbackIndex++}.${language === 'text' ? 'txt' : language}`;
+      projectFiles.push({ name: generatedName, language, content: code });
 
       codeBlocks.push({
         id: uuidv4(),
@@ -205,7 +214,7 @@ export default function App() {
     try {
       // Use the local credits value for the session context if needed
       const activeSession = intermediateSessions.find(s => s.id === currentId);
-      const history = activeSession?.messages.slice(-5).map(m => ({ role: m.role, content: m.content })) || [];
+      const history = activeSession?.messages.map(m => ({ role: m.role, content: m.content })) || [];
       
       const aiResponse = await chatWithClaude(userContent, history, images);
       
@@ -228,7 +237,11 @@ export default function App() {
       
       const artifacts = extractArtifacts(aiResponse);
       if (artifacts.length > 0) {
-        setCurrentArtifact(artifacts[0]);
+        if (isMobile) {
+          setPendingArtifact(artifacts[0]);
+        } else {
+          setCurrentArtifact(artifacts[0]);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -245,19 +258,23 @@ export default function App() {
 
   return (
     <div className={`flex h-screen w-screen overflow-hidden transition-colors duration-300 ${isDark ? 'bg-[#121212] text-white' : 'bg-white text-[#1a1a1a]'}`}>
-      {/* Sidebar Overlay */}
-      <div className={`fixed inset-0 z-50 lg:relative lg:inset-auto ${isSidebarOpen ? 'block' : 'hidden lg:block'}`}>
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setIsSidebarOpen(false)} />
-        <Sidebar 
-          userName={profile.name} 
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+      )}
+
+      {/* Sidebar */}
+      <div className={`fixed left-0 top-0 z-50 h-screen transition-transform duration-200 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <Sidebar
+          userName={profile.name}
           theme={profile.settings.theme}
           sessions={profile.sessions}
           currentSessionId={profile.currentSessionId}
           credits={profile.credits}
-          onNewChat={() => { handleNewChat(); setIsSidebarOpen(false); }} 
+          onNewChat={() => { handleNewChat(); setIsSidebarOpen(false); }}
           onSelectSession={(id) => { handleSelectSession(id); setIsSidebarOpen(false); }}
           onDeleteSession={handleDeleteSession}
-          onFeatureSelect={(name) => { handleSendMessage(`Module: ${name}`); setIsSidebarOpen(false); }} 
+          onFeatureSelect={(name) => { handleSendMessage(`Module: ${name}`); setIsSidebarOpen(false); }}
           onToggleTheme={() => handleUpdateSettings({ theme: isDark ? 'light' : 'dark' })}
           onOpenSettings={() => alert('NC-PRO v4.2 • Core Online')}
         />
@@ -279,8 +296,19 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-hidden relative">
-          <PanelGroup direction="horizontal">
-            <Panel defaultSize={currentArtifact ? 50 : 100} minSize={30}>
+          {pendingArtifact && isMobile && (
+            <div className="absolute top-3 left-3 right-3 z-30 bg-[#D97757] text-white rounded-xl p-3 flex items-center justify-between gap-2">
+              <span className="text-xs font-bold">Preview siap. Buka editor sekarang?</span>
+              <button
+                onClick={() => { setCurrentArtifact(pendingArtifact); setPendingArtifact(null); }}
+                className="px-3 py-1 rounded-lg bg-white text-[#D97757] text-xs font-black"
+              >
+                LIHAT
+              </button>
+            </div>
+          )}
+          <PanelGroup direction="horizontal" id="main-layout">
+            <Panel id="chat-panel" order={1} defaultSize={currentArtifact && !isMobile ? 50 : 100} minSize={30}>
               <ChatInterface 
                 messages={currentSession?.messages || []} 
                 isLoading={isLoading} 
@@ -296,8 +324,8 @@ export default function App() {
             
             {currentArtifact && (
               <>
-                <PanelResizeHandle className={`w-1 transition-all md:block hidden ${isDark ? 'bg-[#2a2a2a] hover:bg-[#D97757]' : 'bg-[#E5E5E1] hover:bg-[#D97757]'}`} />
-                <Panel minSize={30} className="fixed inset-0 z-[60] md:relative md:inset-auto">
+                {!isMobile && <PanelResizeHandle className={`w-1 transition-all md:block hidden ${isDark ? 'bg-[#2a2a2a] hover:bg-[#D97757]' : 'bg-[#E5E5E1] hover:bg-[#D97757]'}`} />}
+                <Panel id="artifact-panel" order={2} minSize={30} className="fixed inset-0 z-[60] md:relative md:inset-auto">
                   <ArtifactView 
                     artifact={currentArtifact} 
                     onClose={() => setCurrentArtifact(null)} 
@@ -312,4 +340,3 @@ export default function App() {
     </div>
   );
 }
-
