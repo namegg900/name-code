@@ -43,6 +43,12 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
     const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
     if (!lastAssistant || isLoading) return;
 
+    const isFresh = Date.now() - (lastAssistant.timestamp || 0) < 5000;
+    if (!isFresh) {
+      setAnimatedMessageId(null);
+      setAnimatedText('');
+      return;
+    }
     setAnimatedMessageId(lastAssistant.id);
     setAnimatedText('');
     let index = 0;

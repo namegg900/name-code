@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingSessionIds, setLoadingSessionIds] = useState<string[]>([]);
   const [currentArtifact, setCurrentArtifact] = useState<Artifact | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -211,7 +211,7 @@ export default function App() {
       if (!prev) return null;
       return { ...prev, sessions: intermediateSessions, currentSessionId: currentId, credits };
     });
-    setIsLoading(true);
+    setLoadingSessionIds((prev) => (currentId && !prev.includes(currentId) ? [...prev, currentId] : prev));
 
     try {
       // Use the local credits value for the session context if needed
@@ -256,7 +256,9 @@ export default function App() {
     } catch (err) {
       console.error(err);
     } finally {
-      setIsLoading(false);
+      if (currentId) {
+        setLoadingSessionIds((prev) => prev.filter((id) => id !== currentId));
+      }
     }
   };
 
@@ -319,7 +321,7 @@ export default function App() {
             <Panel id="chat-panel" order={1} defaultSize={currentArtifact && !isMobile ? 50 : 100} minSize={30}>
               <ChatInterface 
                 messages={currentSession?.messages || []} 
-                isLoading={isLoading} 
+                isLoading={!!(currentSession?.id && loadingSessionIds.includes(currentSession.id))} 
                 onSendMessage={handleSendMessage}
                 userName={profile.name}
                 theme={profile.settings.theme}
