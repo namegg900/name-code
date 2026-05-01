@@ -113,6 +113,7 @@ export default function App() {
     let match;
     
     const projectFiles: FileEntry[] = [];
+    let fallbackIndex = 1;
 
     while ((match = regex.exec(content)) !== null) {
       const language = (match[1] || 'text').toLowerCase();
@@ -125,9 +126,8 @@ export default function App() {
       const isWeb = ['html', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'react'].includes(language) || 
                     (filename && (filename.endsWith('.html') || filename.endsWith('.css') || filename.endsWith('.js')));
 
-      if (filename) {
-        projectFiles.push({ name: filename, language, content: code });
-      }
+      const generatedName = filename || `snippet-${fallbackIndex++}.${language === 'text' ? 'txt' : language}`;
+      projectFiles.push({ name: generatedName, language, content: code });
 
       codeBlocks.push({
         id: uuidv4(),
@@ -205,7 +205,7 @@ export default function App() {
     try {
       // Use the local credits value for the session context if needed
       const activeSession = intermediateSessions.find(s => s.id === currentId);
-      const history = activeSession?.messages.slice(-5).map(m => ({ role: m.role, content: m.content })) || [];
+      const history = activeSession?.messages.map(m => ({ role: m.role, content: m.content })) || [];
       
       const aiResponse = await chatWithClaude(userContent, history, images);
       
@@ -312,4 +312,3 @@ export default function App() {
     </div>
   );
 }
-

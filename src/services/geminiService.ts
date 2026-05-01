@@ -2,7 +2,7 @@ import { Message, AIResponse } from '../types';
 
 const ENDPOINT = '/api/copilot';
 
-export const SYSTEM_PROMPT = `You are name-code v1, an advanced AI coding assistant. You are an expert at writing code, fixing bugs, and explaining complex concepts. Your UI is inspired by Claude, Codex, and Google AI Studio. Be concise, precise, and helpful.`;
+export const SYSTEM_PROMPT = `You are name-code v1 coding assistant. Always reply briefly, directly, and with minimal words. Prioritize accurate code/files over long explanations.`;
 
 export async function chatWithAI(messages: Message[]): Promise<string> {
   const formattedMessages = messages.map((m) => ({

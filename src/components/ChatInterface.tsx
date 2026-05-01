@@ -50,7 +50,7 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
       index += 1;
       setAnimatedText(lastAssistant.content.slice(0, index));
       if (index >= lastAssistant.content.length) clearInterval(timer);
-    }, 8);
+    }, 2);
 
     return () => clearInterval(timer);
   }, [messages, isLoading]);
@@ -181,6 +181,15 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
                 <div className={`text-[11px] font-bold uppercase tracking-widest px-1 ${isDark ? 'text-[#555]' : 'text-[#8e8e8e]'}`}>
                   {msg.role === 'user' ? userName : 'AI Studio'}
                 </div>
+                {msg.role === 'assistant' && (
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(msg.content)}
+                    className="text-[10px] px-2 py-1 rounded-md bg-[#D97757] text-white font-bold"
+                  >
+                    COPY
+                  </button>
+                )}
                 
                 {msg.isReading && (
                   <div className={`flex items-center gap-2 text-xs font-bold text-[#D97757] mb-2 ${msg.role === 'user' ? 'justify-end' : ''}`}>
