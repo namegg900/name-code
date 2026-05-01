@@ -54,25 +54,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       if (codingHint) {
-        const params = new URLSearchParams({ prompt: text, lang: 'javascript' });
-        const url = `https://api.covenant.sbs/api/ai/codegen?${params.toString()}`;
-        const codegenRes = await fetch(url, {
-          method: 'GET',
-          headers: { 'x-api-key': COVENANT_KEY }
+        const codegen = await axios.get('https://api.covenant.sbs/api/ai/codegen', {
+          params: { prompt: text, lang: 'javascript' },
+          headers: { 'x-api-key': COVENANT_KEY },
+          timeout: 45000
         });
-        const codegen = await codegenRes.json();
-        const result = codegen?.data?.result || codegen?.result || codegen?.message;
+        const result = codegen.data?.data?.result || codegen.data?.result || codegen.data?.message;
         if (result) return res.status(200).json({ result: String(result) });
       }
 
-      const params = new URLSearchParams({ question: text, system: nameAISystemPrompt });
-      const url = `https://api.covenant.sbs/api/ai/deepseek?${params.toString()}`;
-      const deepseekRes = await fetch(url, {
-        method: 'GET',
-        headers: { 'x-api-key': COVENANT_KEY }
+      const deepseek = await axios.get('https://api.covenant.sbs/api/ai/deepseek', {
+        params: { question: text, system: nameAISystemPrompt },
+        headers: { 'x-api-key': COVENANT_KEY },
+        timeout: 45000
       });
-      const deepseek = await deepseekRes.json();
-      const result = deepseek?.data?.result || deepseek?.result || deepseek?.message;
+      const result = deepseek.data?.data?.result || deepseek.data?.result || deepseek.data?.message;
       if (result) return res.status(200).json({ result: String(result) });
     } catch (_e) {
       // Continue to Gemini fallback
