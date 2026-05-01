@@ -26,7 +26,16 @@ export default function App() {
     const savedProfile = localStorage.getItem('name-code-profile-v3');
     if (savedProfile) {
       const p: UserProfile = JSON.parse(savedProfile);
-      saveProfile(p);
+      
+      // Token Reset Logic: Refill to 12 every 3 hours
+      const THREE_HOURS = 3 * 60 * 60 * 1000;
+      const now = Date.now();
+      if (now - (p.lastTokenReset || 0) >= THREE_HOURS) {
+        p.credits = 12;
+        p.lastTokenReset = now;
+        localStorage.setItem('name-code-profile-v3', JSON.stringify(p));
+      }
+      setProfile(p);
     }
   }, []);
 
@@ -45,7 +54,9 @@ export default function App() {
       name, 
       settings: { ...DEFAULT_SETTINGS },
       sessions: [],
-      currentSessionId: null
+      currentSessionId: null,
+      credits: 12,
+      lastTokenReset: Date.now()
     };
     saveProfile(newProfile);
   };
@@ -149,9 +160,15 @@ export default function App() {
 
   const handleSendMessage = async (text: string, files?: { name: string, content: string }[], images?: string[]) => {
     if (!profile) return;
+
+    if (profile.credits <= 0) {
+      alert("Tokens exhausted! Please wait for the 3-hour cycle refill.");
+      return;
+    }
     
     let currentId = profile.currentSessionId;
     let sessions = [...profile.sessions];
+    let credits = profile.credits - 1;
 
     let userContent = text;
     if (files && files.length > 0) {
@@ -181,7 +198,7 @@ export default function App() {
 
     saveProfile(prev => {
       if (!prev) return null;
-      return { ...prev, sessions: intermediateSessions, currentSessionId: currentId };
+      return { ...prev, sessions: intermediateSessions, currentSessionId: currentId, credits };
     });
     setIsLoading(true);
 
@@ -236,6 +253,7 @@ export default function App() {
           theme={profile.settings.theme}
           sessions={profile.sessions}
           currentSessionId={profile.currentSessionId}
+          credits={profile.credits}
           onNewChat={() => { handleNewChat(); setIsSidebarOpen(false); }} 
           onSelectSession={(id) => { handleSelectSession(id); setIsSidebarOpen(false); }}
           onDeleteSession={handleDeleteSession}
@@ -255,7 +273,9 @@ export default function App() {
             <div className="w-8 h-8 bg-[#D97757] rounded-lg" />
             <span className="font-black text-sm uppercase tracking-tighter">Name-Code</span>
           </div>
-          <div className="w-10" />
+          <div className="w-10 flex justify-end">
+            <span className="text-[10px] font-black p-1 bg-black/5 dark:bg-white/5 rounded-md">{profile.credits}</span>
+          </div>
         </div>
 
         <div className="flex-1 overflow-hidden relative">
@@ -268,6 +288,8 @@ export default function App() {
                 userName={profile.name}
                 theme={profile.settings.theme}
                 settings={profile.settings}
+                credits={profile.credits}
+                lastTokenReset={profile.lastTokenReset}
                 onUpdateSettings={handleUpdateSettings}
               />
             </Panel>

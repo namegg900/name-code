@@ -9,107 +9,118 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
 
+  // List of Gemini API Keys for rotation
+  const GEMINI_KEYS = [
+    "AQ.Ab8RN6LmRyOSAJRmEFxhSMqRBMx6m76toAwhxCjSLrsIJERSJg",
+    "AQ.Ab8RN6KwjxXguwMWZZs-3kn9vCL9uLFYQS6p4yJYQxpuAMRQ1A",
+    "AQ.Ab8RN6JAiMAMXp1k-_tpObkiDX3npE7gv7p9sKdsLV7hpNEmSg",
+    "AQ.Ab8RN6I9Ih_tCuxi31A2xTffmMz92kVddPS4LrGrO27HmbNdpg",
+    "AQ.Ab8RN6Ki8VvToG44ZSgCvZUXfCKNAITGQP-pQTQQVAwsr0W1vQ"
+  ];
+  let currentKeyIndex = 0;
+
+  // Function to call Gemini with key rotation
+  async function callGeminiDirect(text: string, history: any[], systemPrompt: string) {
+    const maxRetries = GEMINI_KEYS.length;
+    let lastError = null;
+
+    // Convert history to Gemini format
+    const contents = [];
+    if (history && history.length > 0) {
+      history.forEach(item => {
+        contents.push({
+          role: item.role === "assistant" ? "model" : "user",
+          parts: [{ text: item.content }]
+        });
+      });
+    }
+    // Add current user message
+    contents.push({
+      role: "user",
+      parts: [{ text: text }]
+    });
+
+    for (let i = 0; i < maxRetries; i++) {
+      const apiKey = GEMINI_KEYS[currentKeyIndex];
+      try {
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          {
+            system_instruction: {
+              parts: [{ text: systemPrompt }]
+            },
+            contents: contents,
+            generationConfig: {
+              temperature: 0.7,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 2048,
+            }
+          },
+          { timeout: 40000 }
+        );
+
+        const result = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (result) return result;
+        throw new Error("Empty content from Gemini candidate");
+      } catch (error: any) {
+        lastError = error;
+        const status = error.response?.status;
+        console.warn(`Gemini Key ${currentKeyIndex} failed (Status: ${status}): ${error.message}.`);
+        
+        // Always rotate on failure
+        currentKeyIndex = (currentKeyIndex + 1) % GEMINI_KEYS.length;
+        
+        // If we've tried all keys, break
+        if (i === maxRetries - 1) break;
+      }
+    }
+    throw lastError || new Error("All Gemini keys failed after rotation");
+  }
+
   // AI Proxy Route to bypass CORS
   app.post("/api/chat", async (req, res) => {
     try {
       const { text, history, prompt: systemPrompt } = req.body;
       const nameAISystemPrompt = systemPrompt || "Kamu adalah Name-AI, AI yang ramah, hangat, dan menyenangkan saat diajak berbicara.";
       
-      // Fallback Chain Strategy
-      // 1. Deline OpenAI (Primary for this prompt)
-      // 2. Ryhar Qwen-AI
-      // 3. Nexray LLamaCoder
-      // 4. Bard-Google
-      // 5. Native Gemini
-
-      // Try Deline first as it seems more stable for the specific prompt
+      // Primary: Rotating Gemini Keys
       try {
-        const response = await axios.get("https://api.deline.web.id/ai/openai", {
-          params: { 
-            text: text,
-            prompt: nameAISystemPrompt
-          },
-          timeout: 40000,
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
-          }
-        });
+        const result = await callGeminiDirect(text, history || [], nameAISystemPrompt);
+        return res.json({ result });
+      } catch (geminiError: any) {
+        console.warn("Rotating Gemini failed, trying fallbacks...", geminiError.message);
         
-        const result = response.data.result || response.data.message || response.data;
-        if (result && result !== "null" && result !== "") {
-           return res.json({ result: typeof result === 'string' ? result : JSON.stringify(result) });
-        }
-        throw new Error("Invalid response from Deline");
-      } catch (delineError: any) {
-        console.warn("Deline failed, trying Fallback 1 (Ryhar)...", delineError.message);
-        
-        // Fallback 1: Ryhar Qwen-AI
+        // Fallback 1: Deline OpenAI
         try {
-          const response = await axios.post("https://api.ryhar.my.id/ai/qwen-ai", {
-            text: `[SYSTEM: ${nameAISystemPrompt}]\n\n${text}`,
-            history: history || []
-          }, {
-            timeout: 45000,
-            headers: {
-              'Content-Type': 'application/json',
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-              'Referer': 'https://api.ryhar.my.id/'
-            }
+          const response = await axios.get("https://api.deline.web.id/ai/openai", {
+            params: { text: text, prompt: nameAISystemPrompt },
+            timeout: 40000,
+            headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
           });
           const result = response.data.result || response.data.message || response.data;
           if (result && result !== "null" && result !== "") {
             return res.json({ result: typeof result === 'string' ? result : JSON.stringify(result) });
           }
-          throw new Error("Empty response from Ryhar");
-        } catch (ryharError: any) {
-          console.warn("Ryhar failed, trying Fallback 2 (Nexa)...", ryharError.message);
-
-          // Fallback 2: Nexray LLamaCoder (Qwen3-Coder)
-          try {
-            const response = await axios.get("https://api.nexray.eu.cc/ai/llamacoder", {
-              params: { model: "qwen3-coder", text: `[SYSTEM: ${nameAISystemPrompt}]\n\n${text}`.slice(0, 4000) },
-              timeout: 45000,
-              headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
-            });
-            const result = response.data.result || response.data.message || response.data;
-            if (result && result !== "null" && result !== "") {
-              return res.json({ result: typeof result === 'string' ? result : JSON.stringify(result) });
-            }
-            throw new Error("Empty response from Qwen3");
-          } catch (qwenError: any) {
-            console.warn("Fallback 2 failed, trying Fallback 3 (Bard)...", qwenError.message);
-            
-            // Fallback 3: Bard-Google
-            try {
-              const response = await axios.get("https://api-faa.my.id/faa/bard-google", {
-                params: { query: text },
-                timeout: 45000,
-                headers: {
-                  'Accept': 'application/json',
-                  'User-Agent': 'Mozilla/5.0 (Windows)',
-                  'Referer': 'https://api-faa.my.id/'
-                }
-              });
-              const result = response.data.result || response.data.message || response.data;
-              if (result && result !== "null" && result !== "") {
-                return res.json({ result: typeof result === 'string' ? result : JSON.stringify(result) });
-              }
-              throw new Error("Empty response");
-            } catch (bardError: any) {
-              console.warn("All custom APIs failed, jumping to Gemini...", bardError.message);
-              try {
-                const response = await axios.post("https://api-faa.my.id/faa/gemini-ai", {
-                  text: text
-                }, { timeout: 60000 });
-                return res.json(response.data);
-              } catch (geminiError: any) {
-                console.error("TOTAL FAILURE: All fallbacks exhausted.");
-                return res.status(503).json({ error: "Name-AI is currently busy. Please try again soon." });
-              }
-            }
-          }
+        } catch (f1Error) {
+          console.warn("Fallback 1 failed");
         }
+
+        // Fallback 2: Ryhar Qwen-AI
+        try {
+          const response = await axios.post("https://api.ryhar.my.id/ai/qwen-ai", {
+            text: `[SYSTEM: ${nameAISystemPrompt}]\n\n${text}`,
+            history: history || []
+          }, { timeout: 45000 });
+          const result = response.data.result || response.data.message || response.data;
+          if (result && result !== "null" && result !== "") {
+            return res.json({ result: typeof result === 'string' ? result : JSON.stringify(result) });
+          }
+        } catch (f2Error) {
+          console.warn("Fallback 2 failed");
+        }
+
+        return res.status(503).json({ error: "All AI services are currently overloaded. Please try again." });
       }
     } catch (error: any) {
       console.error("Server Proxy Error:", error.message);

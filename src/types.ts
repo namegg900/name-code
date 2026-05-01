@@ -28,6 +28,8 @@ export interface UserProfile {
   settings: AppSettings;
   sessions: ChatSession[];
   currentSessionId: string | null;
+  credits: number;
+  lastTokenReset: number;
 }
 
 export interface FileEntry {

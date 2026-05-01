@@ -16,10 +16,12 @@ interface ChatInterfaceProps {
   userName: string;
   theme: Theme;
   settings: AppSettings;
+  credits: number;
+  lastTokenReset: number;
   onUpdateSettings: (settings: Partial<AppSettings>) => void;
 }
 
-export default function ChatInterface({ messages, isLoading, onSendMessage, userName, theme, settings, onUpdateSettings }: ChatInterfaceProps) {
+export default function ChatInterface({ messages, isLoading, onSendMessage, userName, theme, settings, credits, lastTokenReset, onUpdateSettings }: ChatInterfaceProps) {
   const [input, setInput] = React.useState('');
   const [selectedFiles, setSelectedFiles] = React.useState<{ name: string, content: string }[]>([]);
   const [selectedImages, setSelectedImages] = React.useState<string[]>([]);
@@ -27,11 +29,23 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const isExhausted = credits <= 0;
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
+
+  const getTimeToReset = () => {
+    const THREE_HOURS = 3 * 60 * 60 * 1000;
+    const nextReset = (lastTokenReset || Date.now()) + THREE_HOURS;
+    const diff = nextReset - Date.now();
+    if (diff <= 0) return 'Resetting...';
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -80,6 +94,7 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isExhausted) return;
     if ((input.trim() || selectedFiles.length > 0 || selectedImages.length > 0) && !isLoading) {
       onSendMessage(input.trim(), selectedFiles, selectedImages);
       setInput('');
@@ -99,6 +114,15 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
           <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-[#1a1a1a]'}`}>Project Studio</span>
         </div>
           <div className={`flex items-center gap-4`}>
+            <div className={`flex flex-col items-end`}>
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${isDark ? 'bg-[#0a0a0a] border-[#2a2a2a]' : 'bg-[#f9f9f8] border-[#E5E5E1]'}`}>
+                <Coins size={14} className={isExhausted ? 'text-red-500' : 'text-[#D97757]'} />
+                <span className={`text-[10px] font-bold uppercase ${isDark ? 'text-gray-400' : 'text-[#4a4a4a]'}`}>
+                  {credits}/12 TOKENS {isExhausted && '(EXHAUSTED)'}
+                </span>
+              </div>
+              <p className={`text-[8px] font-bold uppercase tracking-tighter mt-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Refill In: {getTimeToReset()}</p>
+            </div>
             <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${isDark ? 'bg-[#0a0a0a] border-[#2a2a2a]' : 'bg-[#f9f9f8] border-[#E5E5E1]'}`}>
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className={`text-[10px] font-bold uppercase ${isDark ? 'text-gray-400' : 'text-[#4a4a4a]'}`}>System Online</span>
@@ -274,11 +298,14 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleSubmit(e);
+                    if (!isExhausted) handleSubmit(e);
                   }
                 }}
-                placeholder="Send a message or upload files for analysis..."
+                disabled={isExhausted}
+                placeholder={isExhausted ? "Tokens exhausted. Please wait for refill." : "Send a message or upload files for analysis..."}
                 className={`w-full border outline-none rounded-2xl px-6 py-4 pr-32 transition-all placeholder:text-[#666] resize-none shadow-sm min-h-[56px] max-h-40 ${
+                  isExhausted ? 'opacity-50 cursor-not-allowed' : ''
+                } ${
                   isDark ? 'bg-[#111] border-[#2a2a2a] text-white focus:border-[#D97757]' : 'bg-[#fcfcfb] border-[#E5E5E1] text-[#1a1a1a] focus:border-[#D97757]'
                 }`}
               />
@@ -289,14 +316,16 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
                   multiple 
                   ref={imageInputRef} 
                   onChange={handleImageChange} 
+                  disabled={isExhausted}
                   className="hidden" 
                 />
                 <button 
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
+                  disabled={isExhausted}
                   className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm ${
                     isDark ? 'bg-[#2a2a2a] text-gray-400 hover:text-white' : 'bg-[#efefed] text-[#4a4a4a] hover:bg-[#e5e5e1]'
-                  }`}
+                  } ${isExhausted ? 'opacity-30' : ''}`}
                 >
                   <ImageIcon size={18} />
                 </button>
@@ -305,20 +334,22 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
                   multiple 
                   ref={fileInputRef} 
                   onChange={handleFileChange} 
+                  disabled={isExhausted}
                   className="hidden" 
                 />
                 <button 
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={isExhausted}
                   className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm ${
                     isDark ? 'bg-[#2a2a2a] text-gray-400 hover:text-white' : 'bg-[#efefed] text-[#4a4a4a] hover:bg-[#e5e5e1]'
-                  }`}
+                  } ${isExhausted ? 'opacity-30' : ''}`}
                 >
                   <Paperclip size={18} />
                 </button>
                 <button 
                   type="submit"
-                  disabled={(!input.trim() && selectedFiles.length === 0 && selectedImages.length === 0) || isLoading}
+                  disabled={(!input.trim() && selectedFiles.length === 0 && selectedImages.length === 0) || isLoading || isExhausted}
                   className="w-10 h-10 bg-[#D97757] text-white flex items-center justify-center rounded-xl hover:bg-[#c6684b] transition-all disabled:opacity-30 shadow-lg"
                 >
                   <Send size={18} />

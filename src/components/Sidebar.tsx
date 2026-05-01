@@ -11,6 +11,7 @@ interface SidebarProps {
   theme: Theme;
   sessions: ChatSession[];
   currentSessionId: string | null;
+  credits: number;
   onNewChat: () => void;
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
@@ -24,6 +25,7 @@ export default function Sidebar({
   theme, 
   sessions, 
   currentSessionId,
+  credits,
   onNewChat, 
   onSelectSession,
   onDeleteSession,
@@ -148,9 +150,14 @@ export default function Sidebar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold truncate">{userName}</p>
-            <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-              <p className={`text-[10px] font-semibold uppercase ${isDark ? 'text-[#666]' : 'text-[#8e8e8e]'}`}>Pro Dev</p>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <p className={`text-[10px] font-semibold uppercase ${isDark ? 'text-[#666]' : 'text-[#8e8e8e]'}`}>Pro Dev</p>
+              </div>
+              <p className={`text-[10px] font-bold mt-0.5 ${credits > 5 ? 'text-green-500/70' : 'text-red-500/70'}`}>
+                {credits}/12 TOKENS
+              </p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
