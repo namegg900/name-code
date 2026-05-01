@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { GoogleGenAI } from "@google/genai";
 
 export const SYSTEM_PROMPT = `Name-AI PRO V4.2 [VISION-ENABLED]
 ROLE: THE SUPREME MULTI-FILE ARCHITECT.
@@ -13,9 +12,6 @@ STRATEGIC PROTOCOLS:
 4. WORKSPACE UX: Ensure the output creates a clean file explorer structure similar to VSCode.
 5. UI/UX: Design modern, ultra-responsive interfaces using Tailwind CSS.
 6. NO FAILURES: Logic must be bug-free and production-ready.`;
-
-// Initialize Gemini for high-accuracy fallback
-const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 export async function chatWithClaude(prompt: string, history: { role: string, content: string }[], images?: string[]) {
   try {
