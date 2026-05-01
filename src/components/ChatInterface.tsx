@@ -50,7 +50,7 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
       index += 1;
       setAnimatedText(lastAssistant.content.slice(0, index));
       if (index >= lastAssistant.content.length) clearInterval(timer);
-    }, 2);
+    }, 1);
 
     return () => clearInterval(timer);
   }, [messages, isLoading]);
@@ -242,6 +242,7 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
               <Loader2 size={20} className="text-[#D97757] animate-spin" />
             </div>
             <div className="flex-1 space-y-2 py-2">
+              <p className="text-xs font-bold text-[#D97757] animate-pulse">AI sedang menganalisis & berpikir...</p>
               <div className={`h-4 rounded-full w-2/3 animate-pulse ${isDark ? 'bg-[#2a2a2a]' : 'bg-[#f9f9f8]'}`} />
               <div className={`h-4 rounded-full w-1/2 animate-pulse ${isDark ? 'bg-[#2a2a2a]' : 'bg-[#f9f9f8]'}`} />
             </div>

@@ -7,6 +7,7 @@ import { Message, UserProfile, Artifact, Theme, AppSettings, ChatSession, FileEn
 import { chatWithClaude } from './services/geminiService';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { v4 as uuidv4 } from 'uuid';
+import JSZip from 'jszip';
 
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
@@ -23,6 +24,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [pendingArtifact, setPendingArtifact] = useState<Artifact | null>(null);
+  const [artifactZipUrl, setArtifactZipUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const savedProfile = localStorage.getItem('name-code-profile-v3');
@@ -135,7 +137,7 @@ export default function App() {
       const isWeb = ['html', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'react'].includes(language) || 
                     (filename && (filename.endsWith('.html') || filename.endsWith('.css') || filename.endsWith('.js')));
 
-      const generatedName = filename || `snippet-${fallbackIndex++}.${language === 'text' ? 'txt' : language}`;
+      const generatedName = filename || `file-${fallbackIndex++}.${language === 'text' ? 'txt' : language}`;
       projectFiles.push({ name: generatedName, language, content: code });
 
       codeBlocks.push({
@@ -143,7 +145,7 @@ export default function App() {
         type: isMC ? 'minecraft' : (isWeb ? 'web' : 'code'),
         language,
         code,
-        title: filename || (isMC ? `MC Module: ${language.toUpperCase()}` : `Snippet: ${language.toUpperCase()}`)
+        title: filename || generatedName
       });
     }
 
@@ -237,6 +239,14 @@ export default function App() {
       
       const artifacts = extractArtifacts(aiResponse);
       if (artifacts.length > 0) {
+        const files = artifacts[0].files || [];
+        if (files.length > 0) {
+          const zip = new JSZip();
+          files.forEach((f) => zip.file(f.name, f.content));
+          const blob = await zip.generateAsync({ type: 'blob' });
+          if (artifactZipUrl) URL.revokeObjectURL(artifactZipUrl);
+          setArtifactZipUrl(URL.createObjectURL(blob));
+        }
         if (isMobile) {
           setPendingArtifact(artifacts[0]);
         } else {
@@ -298,13 +308,11 @@ export default function App() {
         <div className="flex-1 overflow-hidden relative">
           {pendingArtifact && isMobile && (
             <div className="absolute top-3 left-3 right-3 z-30 bg-[#D97757] text-white rounded-xl p-3 flex items-center justify-between gap-2">
-              <span className="text-xs font-bold">Preview siap. Buka editor sekarang?</span>
-              <button
-                onClick={() => { setCurrentArtifact(pendingArtifact); setPendingArtifact(null); }}
-                className="px-3 py-1 rounded-lg bg-white text-[#D97757] text-xs font-black"
-              >
-                LIHAT
-              </button>
+              <span className="text-xs font-bold">Coding selesai. Buka editor/preview atau download ZIP.</span>
+              <div className="flex gap-2">
+                {artifactZipUrl && <a href={artifactZipUrl} download="name-code-project.zip" className="px-3 py-1 rounded-lg bg-black text-white text-xs font-black">ZIP</a>}
+                <button onClick={() => { setCurrentArtifact(pendingArtifact); setPendingArtifact(null); }} className="px-3 py-1 rounded-lg bg-white text-[#D97757] text-xs font-black">LIHAT</button>
+              </div>
             </div>
           )}
           <PanelGroup direction="horizontal" id="main-layout">
