@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/openai",
+      "destination": "https://api.deline.web.id/ai/openai"
+    }
+  ]
+}
