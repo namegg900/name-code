@@ -6,6 +6,14 @@ export interface Message {
   isReading?: boolean;
 }
 
+export interface AIResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
 export type Theme = 'light' | 'dark';
 
 export interface AppSettings {
