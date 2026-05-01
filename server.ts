@@ -82,7 +82,7 @@ async function startServer() {
   // AI Proxy Route to bypass CORS
   app.post("/api/chat", async (req, res) => {
     try {
-      const { text, history, prompt: systemPrompt } = req.body;
+      const { text, prompt: systemPrompt } = req.body;
       const nameAISystemPrompt = systemPrompt || "Kamu adalah Name-AI, AI yang ramah, hangat, dan menyenangkan saat diajak berbicara.";
       const COVENANT_KEY = "cov_live_54d5852a27b215169f91efefed500ffd187d20a3c1ed752c";
       const codingHint = /\b(code|coding|program|script|function|class|bug|debug|build|buat coding|bikin coding)\b/i.test(text || "");
