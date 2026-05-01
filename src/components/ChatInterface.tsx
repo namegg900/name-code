@@ -28,6 +28,8 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [animatedMessageId, setAnimatedMessageId] = React.useState<string | null>(null);
+  const [animatedText, setAnimatedText] = React.useState('');
 
   const isExhausted = credits <= 0;
 
@@ -35,6 +37,22 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+  }, [messages, isLoading]);
+
+  useEffect(() => {
+    const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
+    if (!lastAssistant || isLoading) return;
+
+    setAnimatedMessageId(lastAssistant.id);
+    setAnimatedText('');
+    let index = 0;
+    const timer = setInterval(() => {
+      index += 1;
+      setAnimatedText(lastAssistant.content.slice(0, index));
+      if (index >= lastAssistant.content.length) clearInterval(timer);
+    }, 8);
+
+    return () => clearInterval(timer);
   }, [messages, isLoading]);
 
   const getTimeToReset = () => {
@@ -201,7 +219,7 @@ export default function ChatInterface({ messages, isLoading, onSendMessage, user
                       }
                     }}
                   >
-                    {msg.content}
+                    {animatedMessageId === msg.id ? animatedText : msg.content}
                   </ReactMarkdown>
                 </div>
               </div>
