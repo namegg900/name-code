@@ -19,24 +19,30 @@ const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env
 
 export async function chatWithClaude(prompt: string, history: { role: string, content: string }[], images?: string[]) {
   try {
-    const historyContext = history.slice(-5).map(m => `[${m.role.toUpperCase()}]: ${m.content.slice(0, 1000)}`).join('\n');
     let userText = prompt;
     
     if (images && images.length > 0) {
       userText = `[ATTACHED IMAGES: ${images.length}]\n\n${prompt}`;
     }
 
-    // Try the custom endpoint first
+    // Primary: Vercel rewrite proxy endpoint (avoids browser CORS issues)
     try {
-      const response = await axios.post(`/api/chat`, { 
-        text: userText,
-        history: history.slice(-10), // Pass real history array
-        prompt: SYSTEM_PROMPT 
-      }, { timeout: 70000 });
-      if (response.data && response.data.result) return response.data.result;
-      if (response.data && response.data.message) return response.data.message;
+      const isCodingRequest = /\b(code|coding|program|script|function|class|bug|debug|build|buat coding|bikin coding)\b/i.test(userText);
+      const proxyUrl = isCodingRequest
+        ? `/api-proxy/api/ai/codegen?prompt=${encodeURIComponent(userText)}&lang=javascript`
+        : `/api-proxy/api/ai/deepseek?question=${encodeURIComponent(userText)}&system=${encodeURIComponent(SYSTEM_PROMPT)}`;
+      const response = await axios.get(proxyUrl, {
+        headers: {
+          "x-api-key": "cov_live_54d5852a27b215169f91efefed500ffd187d20a3c1ed752c"
+        },
+        timeout: 70000
+      });
+      const result = response.data?.result || response.data?.message || response.data?.data || response.data;
+      if (typeof result === "string" && result.trim().length > 0) return result;
+      if (typeof result?.result === "string" && result.result.trim().length > 0) return result.result;
+      if (result) return JSON.stringify(result);
     } catch (proxyError) {
-      console.warn("Name-AI Custom API failed, falling back to Gemini Core...", proxyError);
+      console.warn("Covenant proxy failed, falling back to Gemini Core...", proxyError);
     }
 
     // Fallback to Gemini with native Vision support
